@@ -16,47 +16,48 @@ const { Product } = require("./classes/Product");
 const { Review } = require("./classes/Review");
 const { User } = require("./classes/User");
 
+// Функция возвращает объект продукта по id
+function getProductObject(productId, products) {
+    return products.find(product => product.id === productId);
+}
+
+// Функция возвращает массив всех отзывов на продукт
+function getAllReviews(productId, reviews, products, users) {
+    const resultArray = [];
+    for (const review of reviews) {
+        if (getProductObject(productId, products).reviewIds.includes(review.id)) {
+            const foundUserObject = users.find(obj => obj.id === review.userId);
+            const newUser = new User(foundUserObject.id, foundUserObject.name);
+            const newReview = new Review(null, review.id, review.text);
+            newReview.user = newUser;
+            resultArray.push(newReview);
+        }
+    }
+    return resultArray;
+}
+
+// Функция возвращает массив всех продуктов, производимых компанией
+function getAllProducts(companyId, products, reviews, users) {
+    const resultArray = [];
+    for (const product of products) {
+        if (product.companyId === companyId) {
+            const newProduct = new Product(product.id, product.companyId, product.name, product.description);
+            newProduct.reviews = getAllReviews(newProduct.id, reviews, products, users);
+            resultArray.push(newProduct);
+        }
+    }
+    return resultArray;
+}
+
 (async () => {
     try {
         const [users, companies, products, reviews] = await Promise.all([getUsers(), getCompanies(), getProducts(), getReviews()]);
-
-        function getProductObject(productId) {
-            return products.find(product => product.id === productId);
-        }
-
-        // Функция возвращает массив всех отзывов на продукт
-        function getAllReviews(productId) {
-            const resultArray = [];
-            for (const review of reviews) {
-                if (getProductObject(productId).reviewIds.includes(review.id)) {
-                    const foundUserObject = users.find(obj => obj.id === review.userId);
-                    const newUser = new User(foundUserObject.id, foundUserObject.name);
-                    const newReview = new Review(null, review.id, review.text);
-                    newReview.user = newUser;
-                    resultArray.push(newReview);
-                }
-            }
-            return resultArray;
-        }
-
-        // Функция возвращает массив всех продуктов, производимых компанией
-        function getAllProducts(companyId) {
-            const resultArray = [];
-            for (const product of products) {
-                if (product.companyId === companyId) {
-                    const newProduct = new Product(product.id, product.companyId, null, product.name, product.description);
-                    newProduct.reviews = getAllReviews(newProduct.id);
-                    resultArray.push(newProduct);
-                }
-            }
-            return resultArray;
-        }
 
         //итоговый массив, состоящий из экземпляров класса Company
         const finalArray = [];
         for (const company of companies) {
             const companyList = new Company(company.id, company.name, company.created, company.country, null);
-            companyList.allProducts = getAllProducts(company.id);
+            companyList.allProducts = getAllProducts(company.id, products, reviews, users);
             finalArray.push(companyList);
         }
 
